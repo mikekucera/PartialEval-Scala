@@ -100,8 +100,14 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
     "read (namelist, valuelist);" parseAs read must equal (Read(List("namelist","valuelist")))
   }
   
+  test("parse stuff with comments") {
+    "hd(/*the head of xs */ xs)" parseAs expression must equal (Unary(Head,Var("xs")))
+    "/* set y to x */ x := y; /* yes */" parseAs assign must equal (Assign("x", Var("y")))
+  }
+  
   test("program fragment from section 4.4.2") {
     val source =
+      "/* section 4.2.2 */                                  \n" +
       "read (namelist, valuelist);                          \n" +
       "search: if name = hd(namelist) goto found else cont; \n" +
       "cont:   valuelist := tl(valuelist);                  \n" +

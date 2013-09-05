@@ -10,6 +10,10 @@ object FlowChartParser extends RegexParsers {
   def ident:  Parser[String] = "[A-Za-z](\\w|-)*".r
   def label:  Parser[String] = ident
   
+  // add support for C-style multi-line comments (from http://stackoverflow.com/questions/5952720/ignoring-c-style-comments-in-a-scala-combinator-parser)
+  protected override val whiteSpace = """(\s|//.*|(?m)/\*(\*(?!/)|[^*])*\*/)+""".r
+  
+  
   def unaryOp: Parser[UnaryOp] = 
     "hd" ^^ (_ => Head) | 
     "tl" ^^ (_ => Tail) | 
