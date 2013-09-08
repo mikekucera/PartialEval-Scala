@@ -53,8 +53,8 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
   
   test("parse simple expressions") {
     "'as_1" parseAs expression must equal (Str("as_1"))
-    "'()" parseAs expression must equal (EmptyList)
-    "'( )" tryParsingAs expression must failParsing
+    "'()" parseAs expression must equal (Lst(List()))
+    "'('a,'b)" parseAs expression must equal(Lst(List("a","b")))
     "as_1" parseAs expression must equal (Var("as_1"))
     "1a" tryParsingAs expression must failParsing
   }
@@ -66,8 +66,8 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
   }
   
   test("parse binary expressions") {
-    "cons(x, '())" parseAs expression must equal (Binary(Cons,Var("x"),EmptyList))
-    "cons(x, cons(y, '()))" parseAs expression must equal (Binary(Cons,Var("x"),Binary(Cons,Var("y"),EmptyList)))
+    "cons(x, '())" parseAs expression must equal (Binary(Cons,Var("x"),Lst(List())))
+    "cons(x, cons(y, '()))" parseAs expression must equal (Binary(Cons,Var("x"),Binary(Cons,Var("y"),Lst(List()))))
     "cons(x,y,z)" tryParsingAs expression must failParsing
   }
   
@@ -87,6 +87,7 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
   
   test("parse if-goto-else") {
     "if x = y goto do-x else do-y;" parseAs branchCommand must equal (IfGotoElse(Var("x"),Var("y"),"do-x","do-y"))
+    "loop: if Qtail = '() goto stop else cont;" tryParsingAs block must be ('successful)
   }
   
   test("parse blocks") {
@@ -105,16 +106,15 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
     "/* set y to x */ x := y; /* yes */" parseAs assign must equal (Assign("x", Var("y")))
   }
   
-  test("program fragment from section 4.4.2") {
-    val source =
-      "/* section 4.2.2 */                                  \n" +
-      "read (namelist, valuelist);                          \n" +
-      "search: if name = hd(namelist) goto found else cont; \n" +
-      "cont:   valuelist := tl(valuelist);                  \n" +
-      "        namelist  := tl(namelist);                   \n" +
-      "        goto search;                                 \n" +
-      "found:  value := hd(valuelist); return value;          "
-      
+  test("program fragment from section 4.4.2: lookup.flow") {
+    val path = "src/test/scala/pe/flowchart/lookup.flow"
+    val source = io.Source.fromFile(path).mkString
+    source tryParsingAs program must be ('successful)
+  }
+  
+  ignore("turing machine simulator program: turing.flow") {
+    val path = "src/test/scala/pe/flowchart/turing.flow"
+    val source = io.Source.fromFile(path).mkString
     source tryParsingAs program must be ('successful)
   }
   

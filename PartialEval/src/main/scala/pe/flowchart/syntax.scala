@@ -30,13 +30,11 @@ object FlowChartSyntax {
   case object NewTail extends BinaryOp
   
   sealed trait Expression
-  case object EmptyList extends Expression
   case class Str(value: String) extends Expression
-  //case class Lst(members: List[String]) extends Expression
+  case class Lst(members: List[String]) extends Expression
   case class Var(name: String) extends Expression
   case class Unary(op:UnaryOp, expr: Expression) extends Expression
   case class Binary(op:BinaryOp, left: Expression, right: Expression) extends Expression
-  case class Split(char:Char, expr: Expression) extends Expression
   
   sealed trait Command
   case class Goto(label:String) extends Command
@@ -45,7 +43,7 @@ object FlowChartSyntax {
   case class Assign(name: String, expr: Expression) extends Command
   
   case class Read(names: List[String])
-  case class Line(label: String, command: Command)
+  case class Line(label: String = "", command: Command)
   case class Program(read:Read, lines:List[Line])
 
   
@@ -54,15 +52,13 @@ object FlowChartSyntax {
     program.lines.map(prettyLine).mkString("\n")
   
   def pretty(expr:Expression): String = expr match {
-    case EmptyList => "'()"
     case Str(value) => "'" + value
-    //case Lst(members) => members.mkString("'[", ",", "]")
+    case Lst(members) => members.mkString("'(", ",", ")")
     case Unary(Head, expr) => s"hd(${pretty(expr)})"
     case Unary(Tail, expr) => s"tl(${pretty(expr)})"
     case Unary(FirstSym, expr) => s"first_sym(${pretty(expr)})"
     case Binary(Cons, left, right) => s"cons(${pretty(left)},${pretty(right)})"
     case Binary(NewTail, left, right) => s"new_tail(${pretty(left)},${pretty(right)})"
-    case Split(c, expr) => s"split($c, ${pretty(expr)})"
   }
   
   def prettyLine(line:Line): String = {

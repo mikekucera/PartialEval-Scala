@@ -25,7 +25,7 @@ object FlowChartParser extends RegexParsers {
                                    
   def expression: Parser[Expression] = 
     string ^^ Str |
-    "'()" ^^ (_ => EmptyList) |
+    "'(" ~> repsep(string,",") <~ ")" ^^ Lst |
     unaryOp ~ ("(" ~> expression <~ ")") ^^ { case op~e => Unary(op, e) } |
     binaryOp ~ ("(" ~> expression) ~ ("," ~> expression <~ ")") ^^ { case op~e1~e2 => Binary(op, e1, e2) } |
     ident ^^ Var

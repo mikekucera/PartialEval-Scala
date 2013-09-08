@@ -36,7 +36,7 @@ object FlowChartInterpreter {
   }
   
   def eval(expr: Expression)(implicit env: Environment): Value = expr match {
-    case EmptyList => ListValue(Nil)
+    case Lst(l) => ListValue(l)
     case Str(s) => StringValue(s)
     case Unary(op, e) => unaryOp(op, eval(e))
     case Binary(op, e1, e2) => binaryOp(op, eval(e1), eval(e2))
@@ -54,7 +54,7 @@ object FlowChartInterpreter {
     }
   }
   
-  private def programTails(program: Program): Tails = {
+  def programTails(program: Program): Tails = {
     def findTails(rest:List[Line], tails:Tails): Tails = rest match {
       case Nil => tails
       case l :: ls => findTails(ls, if(l.label.isEmpty) tails else tails + (l.label -> rest))
