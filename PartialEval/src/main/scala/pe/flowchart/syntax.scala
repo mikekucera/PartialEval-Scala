@@ -54,6 +54,7 @@ object FlowChartSyntax {
   def pretty(expr:Expression): String = expr match {
     case Str(value) => "'" + value
     case Lst(members) => members.mkString("'(", ",", ")")
+    case Var(name) => name
     case Unary(Head, expr) => s"hd(${pretty(expr)})"
     case Unary(Tail, expr) => s"tl(${pretty(expr)})"
     case Unary(FirstSym, expr) => s"first_sym(${pretty(expr)})"
