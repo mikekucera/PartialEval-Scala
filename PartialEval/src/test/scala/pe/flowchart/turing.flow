@@ -8,35 +8,35 @@
  */
 read (Q, Right);
 init:      Qtail := Q; 
-           Left := '();
+           Left := [];
            goto loop;
            
-loop:      if Qtail = '() goto stop else cont;
+loop:      if Qtail = [] goto stop else cont;
 
-cont:      Instruction := first_instruction(Qtail);
-           Qtail := rest(Qtail);
+cont:      Instruction := split(' ', hd(Qtail));
+           Qtail := tl(Qtail);
            Operator := hd(tl(Instruction));
            
-           if Operator = 'right goto do-right else cont1;
-cont1:     if Operator = 'left goto do-left else cont2;
-cont2:     if Operator = 'write goto do-write else cont3;
-cont3:     if Operator = 'goto goto do-goto else cont4;
-cont4:     if Operator = 'if goto do-if else error;
+           if Operator = 'right' goto do-right else cont1;
+cont1:     if Operator = 'left' goto do-left else cont2;
+cont2:     if Operator = 'write' goto do-write else cont3;
+cont3:     if Operator = 'goto' goto do-goto else cont4;
+cont4:     if Operator = 'if' goto do-if else error;
 
-do-right:  Left := cons(firstsym(Right), Left);
+do-right:  Left := cons(first_sym(Right), Left);
            Right := tl(Right); goto loop;
-do-left:   Right := cons(firstsym(Left), Right);
+do-left:   Right := cons(first_sym(Left), Right);
            Left := tl(Left); goto loop;
 do-write:  Symbol := hd(tl(tl(Instruction)));
            Right := cons(Symbol,tl(Right)); goto loop;
 do-goto:   Nextlabel := hd(tl(tl(Instruction)));
-           Qtail := new tail(Nextlabel, Q); goto loop;
+           Qtail := new_tail(Nextlabel, Q); goto loop;
 do-if:     Symbol := hd(tl(tl(Instruction)));
            Nextlabel := hd(tl(tl(tl(tl(Instruction)))));
-           if Symbol = firstsym(Right) goto jump else loop;
+           if Symbol = first_sym(Right) goto jump else loop;
            
 jump:      Qtail := new_tail(Nextlabel,Q); goto loop;
 
-error:     return ('syntax-error);
+error:     return 'syntax error';
 
-stop:      return right;
+stop:      return Right;

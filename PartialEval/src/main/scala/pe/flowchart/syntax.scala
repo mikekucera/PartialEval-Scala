@@ -28,6 +28,7 @@ object FlowChartSyntax {
   sealed trait BinaryOp
   case object Cons extends BinaryOp
   case object NewTail extends BinaryOp
+  case object Split extends BinaryOp
   
   sealed trait Expression
   case class Str(value: String) extends Expression
@@ -60,6 +61,7 @@ object FlowChartSyntax {
     case Unary(FirstSym, expr) => s"first_sym(${pretty(expr)})"
     case Binary(Cons, left, right) => s"cons(${pretty(left)},${pretty(right)})"
     case Binary(NewTail, left, right) => s"new_tail(${pretty(left)},${pretty(right)})"
+    case Binary(Split, left, right) => s"split(${pretty(left)},${pretty(right)})"
   }
   
   def prettyLine(line:Line): String = {

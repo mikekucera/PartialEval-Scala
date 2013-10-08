@@ -32,7 +32,8 @@ object FlowChartInterpreter {
   
   private def binaryOp(op: BinaryOp, v1: Value, v2: Value): Value = op match {
     case Cons => ListValue(v1.string :: v2.list)
-    // TODO NewTail
+    case Split => ListValue(v2.string.split(v1.string).toList)
+    case NewTail => ListValue(v2.list.dropWhile(!_.startsWith(v1.string)))
   }
   
   def eval(expr: Expression)(implicit env: Environment): Value = expr match {

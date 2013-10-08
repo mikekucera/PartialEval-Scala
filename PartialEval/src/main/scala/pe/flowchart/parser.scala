@@ -6,7 +6,7 @@ import pe.flowchart.FlowChartSyntax._
 
 object FlowChartParser extends RegexParsers {
   
-  def string: Parser[String] = "'\\w+".r ^^ (_.substring(1))
+  def string: Parser[String] = """'(\w|\s)*'""".r ^^ (s => s.substring(1,s.length-1))
   def ident:  Parser[String] = "[A-Za-z](\\w|-)*".r
   def label:  Parser[String] = ident
   
@@ -21,11 +21,12 @@ object FlowChartParser extends RegexParsers {
   
   def binaryOp: Parser[BinaryOp] = 
     "cons" ^^ (_ => Cons) |
-    "new_tail" ^^ (_ => NewTail)
+    "new_tail" ^^ (_ => NewTail) |
+    "split" ^^ (_ => Split)
                                    
   def expression: Parser[Expression] = 
     string ^^ Str |
-    "'(" ~> repsep(string,",") <~ ")" ^^ Lst |
+    "[" ~> repsep(string,",") <~ "]" ^^ Lst |
     unaryOp ~ ("(" ~> expression <~ ")") ^^ { case op~e => Unary(op, e) } |
     binaryOp ~ ("(" ~> expression) ~ ("," ~> expression <~ ")") ^^ { case op~e1~e2 => Binary(op, e1, e2) } |
     ident ^^ Var

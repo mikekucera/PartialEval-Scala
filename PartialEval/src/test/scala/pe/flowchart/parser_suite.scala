@@ -38,11 +38,13 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
   }
   
   test("parse strings") {
-    "'asdf" parseAs string must equal ("asdf")
-    "'12" parseAs string must equal ("12")
-    "'a1_a1_" parseAs string must equal ("a1_a1_")
+    "'asdf'" parseAs string must equal ("asdf")
+    "'12'" parseAs string must equal ("12")
+    "'a1_a1_'" parseAs string must equal ("a1_a1_")
     "asdf" tryParsingAs string must failParsing
     "'a$" tryParsingAs string must failParsing
+    "' '" parseAs string must equal (" ")
+    "''" parseAs string must equal ("")
   }
   
   test("parse identifiers") {
@@ -52,9 +54,9 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
   }
   
   test("parse simple expressions") {
-    "'as_1" parseAs expression must equal (Str("as_1"))
-    "'()" parseAs expression must equal (Lst(List()))
-    "'('a,'b)" parseAs expression must equal(Lst(List("a","b")))
+    "'as_1'" parseAs expression must equal (Str("as_1"))
+    "[]" parseAs expression must equal (Lst(List()))
+    "['a','b']" parseAs expression must equal(Lst(List("a","b")))
     "as_1" parseAs expression must equal (Var("as_1"))
     "1a" tryParsingAs expression must failParsing
   }
@@ -66,9 +68,11 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
   }
   
   test("parse binary expressions") {
-    "cons(x, '())" parseAs expression must equal (Binary(Cons,Var("x"),Lst(List())))
-    "cons(x, cons(y, '()))" parseAs expression must equal (Binary(Cons,Var("x"),Binary(Cons,Var("y"),Lst(List()))))
+    "cons(x, [])" parseAs expression must equal (Binary(Cons,Var("x"),Lst(List())))
+    "cons(x, cons(y, []))" parseAs expression must equal (Binary(Cons,Var("x"),Binary(Cons,Var("y"),Lst(List()))))
     "cons(x,y,z)" tryParsingAs expression must failParsing
+    "new_tail(x,y)" parseAs expression must equal (Binary(NewTail,Var("x"),Var("y")))
+    "split(x,y)" parseAs expression must equal (Binary(Split,Var("x"),Var("y")))
   }
   
   test("parse assignment") {
@@ -87,7 +91,7 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
   
   test("parse if-goto-else") {
     "if x = y goto do-x else do-y;" parseAs branchCommand must equal (IfGotoElse(Var("x"),Var("y"),"do-x","do-y"))
-    "loop: if Qtail = '() goto stop else cont;" tryParsingAs block must be ('successful)
+    "loop: if Qtail = [] goto stop else cont;" tryParsingAs block must be ('successful)
   }
   
   test("parse blocks") {
@@ -112,7 +116,7 @@ class FlowChartParserSuite extends FunSuite with MustMatchers {
     source tryParsingAs program must be ('successful)
   }
   
-  ignore("turing machine simulator program: turing.flow") {
+  test("turing machine simulator program: turing.flow") {
     val path = "src/test/scala/pe/flowchart/turing.flow"
     val source = io.Source.fromFile(path).mkString
     source tryParsingAs program must be ('successful)

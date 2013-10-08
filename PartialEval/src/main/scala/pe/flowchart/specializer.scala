@@ -112,7 +112,7 @@ object FlowChartSpecializer {
         mix(blocks, division, pendingTail, marked)
       else {
         val (residualBlock, successors) = generateResidualBlock(label, blocks, division, env)
-        println(successors)
+        //println(successors)
         relabelBlock(residualBlock, pp) ++ mix(blocks, division, pendingTail ++ successors, pp::marked)
       }
   }

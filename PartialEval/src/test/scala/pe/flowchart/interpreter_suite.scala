@@ -6,7 +6,7 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.matchers.MustMatchers
 
 import pe.flowchart.FlowChartInterpreter._ 
-import pe.flowchart.FlowChartParser._
+import pe.flowchart.FlowChartParser.{parseAll,program}
 
 @RunWith(classOf[JUnitRunner])
 class FlowChartInterpreterSuite extends FunSuite with MustMatchers {
@@ -14,7 +14,7 @@ class FlowChartInterpreterSuite extends FunSuite with MustMatchers {
   def getAst(filePath:String) = parseAll(program, new java.io.FileReader(filePath)).get
   
   val lookup = getAst("src/test/scala/pe/flowchart/lookup.flow")
-  //val turing = getAst("src/test/scala/pe/flowchart/turing.flow")
+  val turing = getAst("src/test/scala/pe/flowchart/turing.flow")
   
 	  
   test("correct execution") {
@@ -34,4 +34,14 @@ class FlowChartInterpreterSuite extends FunSuite with MustMatchers {
     val thrown = evaluating { runProgram(lookup, input) } must produce [EvaluationException]
     thrown.getMessage must equal ("expected a list")
   }
+  
+  test("turing machine") {
+    val Q = ListValue("0 if 0 goto 3", "1 right", "2 goto 0", "3 write 1")
+    val right = ListValue("1","1","0","1","0","1")
+    val input = List(Q, right)
+    val result = runProgram(turing, input)
+    result must be (ListValue("1","1","0","1"))
+  }
+  
+ 
 }
