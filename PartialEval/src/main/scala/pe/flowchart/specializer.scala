@@ -97,7 +97,9 @@ object FlowChartSpecializer {
   }
   
   
-  def genLabel(pp:ProgramPoint):String = pp.toString // Just for now
+  def genLabel(pp:ProgramPoint):String = pp match {
+    case (label, env) => label + "$" + java.lang.Long.toString(env.hashCode & 0xFFFFFFFFL, 16)
+  }
   
   def relabelBlock(block: List[Line], pp:ProgramPoint) = block match {
     case Nil => Nil
@@ -112,17 +114,41 @@ object FlowChartSpecializer {
         mix(blocks, division, pendingTail, marked)
       else {
         val (residualBlock, successors) = generateResidualBlock(label, blocks, division, env)
-        //println(successors)
         relabelBlock(residualBlock, pp) ++ mix(blocks, division, pendingTail ++ successors, pp::marked)
       }
   }
   
+  def relabel(lines: List[Line]): List[Line] = {
+    def relabelLines(lines: List[Line], counters:Map[String,Map[String,Int]]): List[Line] = lines match {
+      case Nil => Nil
+      case Line("",   command) :: rest => Line("", command) :: relabelLines(rest, counters)
+      case Line(label,command) :: rest => {
+        val Array(name,hash) = label.split('$')
+        if(counters contains name) {
+          val hashes = counters(name)
+          if(hashes contains hash) {
+            Line(name + "_" + hashes(hash), command) :: relabelLines(rest, counters)
+          }
+          else {
+            val n = hashes.size + 1
+            Line(name + "_" + n, command) :: relabelLines(rest, counters + (name -> (hashes + (hash -> n))))
+          }
+        }
+        else
+          Line(name + "_" + 1, command) :: relabelLines(rest, counters + (name -> Map(hash -> 1)))
+      }
+    } 
+    relabelLines(lines, Map())
+  }
+  
+  
+  def computeDivision(program: Program, staticInput: StaticEnv) = (for((k,v) <- staticInput) yield k).toSet  // TODO compute the division propery
   
   def specialize(program: Program, staticInput: StaticEnv): Program = {
-    val division = (for((k,v) <- staticInput) yield k).toSet  // TODO compute the division propery
+    val division = computeDivision(program, staticInput)
     val firstPP = (program.lines.head.label, staticInput)
     val bls = blocks(program)
     val residual = mix(bls, division, List(firstPP), List())
-    Program(program.read, residual) // TODO need to compute new 'read'
+    Program(program.read, relabel(residual)) // TODO need to compute new 'read'
   }
 }

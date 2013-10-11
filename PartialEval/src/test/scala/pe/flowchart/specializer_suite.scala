@@ -7,7 +7,7 @@ import org.scalatest.matchers.MustMatchers
 
 import scala.collection.immutable.SortedMap
 
-import pe.flowchart.FlowChartInterpreter.{Value, StringValue, ListValue}
+import pe.flowchart.FlowChartInterpreter._
 import pe.flowchart.FlowChartSpecializer._ 
 import pe.flowchart.FlowChartParser._
 import pe.flowchart.FlowChartSyntax.pretty
@@ -15,14 +15,22 @@ import pe.flowchart.FlowChartSyntax.pretty
 @RunWith(classOf[JUnitRunner])
 class FlowChartSpecializerSuite extends FunSuite with MustMatchers {
   
+  def getAst(filePath:String) = parseAll(program, new java.io.FileReader(filePath)).get
+  
+  val lookup = getAst("src/test/scala/pe/flowchart/lookup.flow")
+  val turing = getAst("src/test/scala/pe/flowchart/turing.flow")
+  
   test("does it work at all?") {
-    val path = "src/test/scala/pe/flowchart/lookup.flow"
-    val source = io.Source.fromFile(path).mkString
-    val ast = parseAll(program, source).get
-    val input = SortedMap("name" -> StringValue("c"), "namelist" -> ListValue("a","b","c"))
-    val reducedProgram = specialize(ast, input)
+    // specialize program
+    val static = SortedMap("name" -> StringValue("c"), "namelist" -> ListValue("a","b","c"))
+    val specializedProgram = specialize(lookup, static)
     
-    println(pretty(reducedProgram))
+    println(pretty(specializedProgram))
+    
+    val remainingInput = List(ListValue("1","2","3","4"))
+    val result = runProgram(specializedProgram, remainingInput)
+    
+    result must be (StringValue("3"))
   }
   
   
