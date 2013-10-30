@@ -50,6 +50,7 @@ object FlowChartSyntax {
   
   
   def pretty(program: Program): String =
+    "read " + program.read.names.mkString("(", ",", ")") + "\n" + 
     program.lines.map(prettyLine).mkString("\n")
   
   def pretty(expr:Expression): String = expr match {
@@ -68,7 +69,7 @@ object FlowChartSyntax {
     val l = line.label
     line.command match {
       case Goto(label) =>  f"$l%-10s: goto $label;"
-      case Return(expr) => f"$l%-10s: return ${pretty(expr)});"
+      case Return(expr) => f"$l%-10s: return ${pretty(expr)};"
       case IfGotoElse(e1, e2, goto, els) => f"$l%-10s: if ${pretty(e1)} = ${pretty(e2)} then $goto else $els"
       case Assign(name, expr) => f"$l%-10s: $name := ${pretty(expr)};";
     }

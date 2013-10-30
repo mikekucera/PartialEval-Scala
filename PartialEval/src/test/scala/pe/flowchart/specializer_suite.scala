@@ -21,11 +21,15 @@ class FlowChartSpecializerSuite extends FunSuite with MustMatchers {
   val turing = getAst("src/test/scala/pe/flowchart/turing.flow")
   
   test("does it work at all?") {
+    println(pretty(lookup))
+    println()
+    
     // specialize program
-    val static = SortedMap("name" -> StringValue("c"), "namelist" -> ListValue("a","b","c"))
+    val static = Map("name" -> StringValue("c"), "namelist" -> ListValue("a","b","c"))
     val specializedProgram = specialize(lookup, static)
     
     println(pretty(specializedProgram))
+    
     
     val remainingInput = List(ListValue("1","2","3","4"))
     val result = runProgram(specializedProgram, remainingInput)
