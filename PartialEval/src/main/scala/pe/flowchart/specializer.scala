@@ -9,7 +9,7 @@ import scala.collection.immutable.SortedMap
 /**
  * First crack at the flow chart specializer.
  * 
- * TODO: compute a division properly
+ * TODO: correct access modifiers
  */
 object FlowChartSpecializer {
   
@@ -22,6 +22,11 @@ object FlowChartSpecializer {
   implicit def embedValue(value: Value): Expression = value match {
     case StringValue(s) => Str(s)
     case ListValue(l) => Lst(l)
+  }
+  
+  implicit class DivOps(val division: Division) extends AnyVal {
+    def isStatic(v: String) = division contains v
+    def isDynamic(v: String) = !isStatic(v)
   }
    
   
@@ -37,7 +42,7 @@ object FlowChartSpecializer {
   
   
   def isExprStatic(expr: Expression, div: Division): Boolean = expr match {
-    case Var(v) => div contains v
+    case Var(v) => div.isStatic(v)
     case Unary(_, e) => isExprStatic(e, div)
     case Binary(_, e1, e2) => isExprStatic(e1, div) && isExprStatic(e2, div)
     case _ => true
@@ -47,7 +52,7 @@ object FlowChartSpecializer {
   def reduce(expr: Expression, div: Division, env: StaticEnv): Expression = expr match {
     case s:Str => s
     case l:Lst => l
-    case Var(v) => if(div contains v) env(v) else Var(v)
+    case Var(v) => if(div.isStatic(v)) env(v) else Var(v)
     case Unary(op,e) =>
       val r = reduce(e, div, env)
       if(isLiteral(r)) eval(Unary(op, r))(env) else Unary(op, r)
@@ -62,7 +67,7 @@ object FlowChartSpecializer {
     def generate(lines: List[Line], residualLines: List[Line], env: StaticEnv): (List[Line], List[ProgramPoint]) = lines match {
       case Nil => (residualLines, Nil)
       case Line(_,command) :: rest => command match {
-        case Assign(name, expr) if div contains name => 
+        case Assign(name, expr) if div.isStatic(name) => 
           val newEnv = env + (name -> eval(expr)(env))
           generate(rest, residualLines, newEnv)
         case Assign(name, expr) =>
@@ -85,6 +90,7 @@ object FlowChartSpecializer {
           (residual :: residualLines, (lab1,env) :: (lab2,env) :: Nil)
       }
     }
+    
     val startBlock = blocks(label)
     val (residualLines, successors) = generate(startBlock, Nil, env)
     (residualLines.reverse, successors)
@@ -134,13 +140,48 @@ object FlowChartSpecializer {
           Line(name + "_" + 1, command) :: relabelLines(rest, counters + (name -> Map(hash -> 1)))
       }
     } 
+    
     relabelLines(lines, Map())
   }
   
   
-  def residualReads(read: Read, div: Division) = Read(read.names.filter(!div.contains(_)))
+  def computeDivision(program: Program, staticInput: StaticEnv) = {
+    val assigns = allAssigns(program)
+    val programVars = assigns.map(_.name)
+    val initialDivision = staticInput.keySet ++ programVars.filter(!program.read.names.contains(_)) // all program variables are initially marked as static
+    
+    def iterate(div: Division): Division = {
+      val newDiv = nextDivision(div)
+      if(div == newDiv) newDiv else iterate(newDiv)
+    }
+    
+    def nextDivision(div: Division): Division = {
+      assigns.foldLeft(div) {
+        case (div, Assign(n, expr)) if varsIn(expr).exists(div.isDynamic) => div - n
+        case (div, _) => div  
+      }
+    }
+    
+    iterate(initialDivision) // find the fixed point
+  }
   
-  def computeDivision(program: Program, staticInput: StaticEnv) = (for((k,v) <- staticInput) yield k).toSet  // TODO compute the division properly
+  
+  def varsIn(expr: Expression): List[String] = expr match {
+     case Str(_) | Lst(_) => Nil
+     case Var(name) => List(name)
+     case Unary(_, expr) => varsIn(expr)
+     case Binary(_, left, right) => varsIn(left) ++ varsIn(right) // performance doesn't really matter here
+  }
+  
+  
+  /** @return All the assignment statements in the program as a List[Assign]. */
+  def allAssigns(program: Program): List[Assign] =
+    program.lines.collect {
+      case Line(_, Assign(n,e)) => Assign(n,e)
+    }
+  
+  
+  def residualReads(read: Read, div: Division) = Read(read.names.filter(div.isDynamic))
   
   
   def specialize(program: Program, staticInput: StaticEnv): Program = {
