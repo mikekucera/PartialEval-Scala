@@ -10,7 +10,6 @@ import scala.collection.immutable.SortedMap
  * First crack at the flow chart specializer.
  * 
  * TODO: compute a division properly
- * TODO: compute new 'read' list for program
  */
 object FlowChartSpecializer {
   
@@ -139,14 +138,17 @@ object FlowChartSpecializer {
   }
   
   
-  def computeDivision(program: Program, staticInput: StaticEnv) = (for((k,v) <- staticInput) yield k).toSet  // TODO compute the division propery
+  def residualReads(read: Read, div: Division) = Read(read.names.filter(!div.contains(_)))
+  
+  def computeDivision(program: Program, staticInput: StaticEnv) = (for((k,v) <- staticInput) yield k).toSet  // TODO compute the division properly
   
   
   def specialize(program: Program, staticInput: StaticEnv): Program = {
     val division = computeDivision(program, staticInput)
     val firstPP = (program.lines.head.label, staticInput)
     val bls = blocks(program)
-    val residual = mix(bls, division, List(firstPP), List())
-    Program(program.read, relabel(residual)) // TODO need to compute new 'read'
+    val residual = mix(bls, division, List(firstPP), Nil)
+    val read = residualReads(program.read, division)
+    Program(read, relabel(residual))
   }
 }
