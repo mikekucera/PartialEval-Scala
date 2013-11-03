@@ -35,7 +35,7 @@ class FlowChartInterpreterSuite extends FunSuite with MustMatchers {
     thrown.getMessage must equal ("expected a list")
   }
   
-  test("turing machine") {
+  test("run the turing machine") {
     val Q = ListValue("0 if 0 goto 3", "1 right", "2 goto 0", "3 write 1")
     val right = ListValue("1","1","0","1","0","1")
     val input = List(Q, right)

@@ -10,6 +10,7 @@ import scala.collection.immutable.SortedMap
  * First crack at the flow chart specializer.
  * 
  * TODO: correct access modifiers
+ * TODO: Syntax.pretty needs to be updated with new list syntax
  */
 object FlowChartSpecializer {
   
@@ -27,6 +28,12 @@ object FlowChartSpecializer {
   implicit class DivOps(val division: Division) extends AnyVal {
     def isStatic(v: String) = division contains v
     def isDynamic(v: String) = !isStatic(v)
+    def isStatic(expr: Expression): Boolean = expr match {
+	  case Var(v) => isStatic(v)
+	  case Unary(_, e) => isStatic(e)
+	  case Binary(_, e1, e2) => isStatic(e1) && isStatic(e2)
+	  case _ => true
+	}
   }
    
   
@@ -41,12 +48,7 @@ object FlowChartSpecializer {
       yield (label, l :: (ls takeWhile (_.label.isEmpty)))
   
   
-  def isExprStatic(expr: Expression, div: Division): Boolean = expr match {
-    case Var(v) => div.isStatic(v)
-    case Unary(_, e) => isExprStatic(e, div)
-    case Binary(_, e1, e2) => isExprStatic(e1, div) && isExprStatic(e2, div)
-    case _ => true
-  }
+  
   
   
   def reduce(expr: Expression, div: Division, env: StaticEnv): Expression = expr match {
@@ -70,24 +72,29 @@ object FlowChartSpecializer {
         case Assign(name, expr) if div.isStatic(name) => 
           val newEnv = env + (name -> eval(expr)(env))
           generate(rest, residualLines, newEnv)
+          
         case Assign(name, expr) =>
           val reduced = Line(command = Assign(name, reduce(expr, div, env)))
           generate(rest, reduced :: residualLines, env)
+          
         case Return(expr) =>
           val reduced = Line(command = Return(reduce(expr, div, env)))
           (reduced :: residualLines, Nil)
+          
         case Goto(label) =>
           generate(blocks(label), residualLines, env)
-        case IfGotoElse(e1, e2, l1, l2) if isExprStatic(e1, div) && isExprStatic(e2, div) =>
+          
+        case IfGotoElse(e1, e2, l1, l2) if div.isStatic(e1) && div.isStatic(e2) =>
           val label = if(eval(e1)(env) == eval(e2)(env)) l1 else l2
           generate(blocks(label), residualLines, env)
+          
         case IfGotoElse(e1, e2, l1, l2) =>
           val r1 = reduce(e1, div, env)
           val r2 = reduce(e2, div, env)
-          val lab1 = genLabel(l1, env)
-          val lab2 = genLabel(l2, env)
+          val lab1 = tempLabel(l1, env)
+          val lab2 = tempLabel(l2, env)
           val residual = Line(command = IfGotoElse(r1,r2,lab1,lab2))
-          (residual :: residualLines, (lab1,env) :: (lab2,env) :: Nil)
+          (residual :: residualLines, (l1,env) :: (l2,env) :: Nil)
       }
     }
     
@@ -97,49 +104,63 @@ object FlowChartSpecializer {
   }
   
   
-  def genLabel(pp:ProgramPoint):String = pp match {
+  def tempLabel(pp:ProgramPoint):String = pp match {
     case (label, env) => label + "$" + java.lang.Long.toString(env.hashCode & 0xFFFFFFFFL, 16)
   }
   
   
-  def relabelBlock(block: List[Line], pp: ProgramPoint) = block match {
+  def tempLabelForBlock(block: List[Line], pp: ProgramPoint) = block match {
     case Nil => Nil
-    case Line(_, c) :: t => Line(genLabel(pp), c) :: t
+    case Line(_, c) :: t => Line(tempLabel(pp), c) :: t
   }
   
   
   def mix(blocks: Blocks, division: Division, pending: List[ProgramPoint], marked: List[ProgramPoint]): List[Line] = pending match {
     case Nil => Nil
-    case (pp @ (label, env)) :: pendingTail => 
+    case (pp @ (label, env)) :: pendingTail =>
       if(marked contains pp)
         mix(blocks, division, pendingTail, marked)
       else {
         val (residualBlock, successors) = generateResidualBlock(label, blocks, division, env)
-        relabelBlock(residualBlock, pp) ++ mix(blocks, division, pendingTail ++ successors, pp::marked)
+        tempLabelForBlock(residualBlock, pp) ++ mix(blocks, division, pendingTail ++ successors, pp::marked)
       }
   }
   
   
   def relabel(lines: List[Line]): List[Line] = {
-    def relabelLines(lines: List[Line], counters: Map[String,Map[String,Int]]): List[Line] = lines match {
+    type LabelMap = Map[String,Map[String,Int]]
+    
+    def relabelLines(lines: List[Line], labelMap: LabelMap): List[Line] = lines match {
       case Nil => Nil
-      case Line("",   command) :: rest => Line("", command) :: relabelLines(rest, counters)
-      case Line(label,command) :: rest => {
-        val Array(name,hash) = label.split('$')
-        if(counters contains name) {
-          val hashes = counters(name)
-          if(hashes contains hash) {
-            Line(name + "_" + hashes(hash), command) :: relabelLines(rest, counters)
-          }
-          else {
-            val n = hashes.size + 1
-            Line(name + "_" + n, command) :: relabelLines(rest, counters + (name -> (hashes + (hash -> n))))
-          }
-        }
-        else
-          Line(name + "_" + 1, command) :: relabelLines(rest, counters + (name -> Map(hash -> 1)))
-      }
+      case Line(label, command) :: rest =>
+        val (newLabel, labelMap2) = updateCounters(label, labelMap)
+        val (newCommand, labelMap3) = relabelCommand(command, labelMap2)
+        Line(newLabel, newCommand) :: relabelLines(rest, labelMap3)
     } 
+    
+    def relabelCommand(command: Command, labels: LabelMap): (Command, LabelMap) = command match {
+      case Goto(label) =>
+        val (newLabel, labels2) = updateCounters(label, labels)
+        (Goto(newLabel), labels2)
+      case IfGotoElse(e1, e2, goto, els) =>
+        val (newGoto, labels2) = updateCounters(goto, labels)
+        val (newElse, labels3) = updateCounters(els,  labels2)
+        (IfGotoElse(e1, e2, newGoto, newElse), labels3)
+      case command => (command, labels)
+    }
+    
+    def updateCounters(label: String, labels: LabelMap): (String, LabelMap) = label.split('$') match {
+      case Array(name) => (name, labels)
+      case Array(name,hash) => 
+        if(labels contains name) {
+          val hashes = labels(name)
+          if(hashes contains hash)
+            (name + "_" + hashes(hash), labels)
+          else
+            (name + "_" + hashes.size + 1, labels + (name -> (hashes + (hash -> (hashes.size + 1)))))
+        }
+        else (name + "_" + 1, labels + (name -> Map(hash -> 1)))
+    }
     
     relabelLines(lines, Map())
   }
