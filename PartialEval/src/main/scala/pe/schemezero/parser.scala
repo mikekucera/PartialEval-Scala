@@ -71,6 +71,7 @@ object SchemeZeroParser {
   
   def equation(sexpr: SExpr): Equation = sexpr match {
     case Lst(Atom("define")::args::body::Nil) => Equation(name(args), parameters(args), expression(body))
+    case _ => throw new FailParseException("invalid program")
   }
   
   def name(sexpr: SExpr): String = sexpr match {
@@ -90,9 +91,9 @@ object SchemeZeroParser {
     case Atom(name) => Var(name)
     case Lst(Atom("if")::cond::left::right::Nil) => If(relation(cond), expression(left), expression(right))
     case Lst(Atom("call")::Atom(name)::args) => Call(name, args.map(expression))
-    case Lst(Atom("car")::expr::Nil) => Unary(Car, expression(expr))
-    case Lst(Atom("cdr")::expr::Nil) => Unary(Cdr, expression(expr))
-    case Lst(Atom("cons")::left::right::Nil) => Binary(Cons, expression(left), expression(right))
+    case Lst(Atom("car")::expr::Nil) => Car(expression(expr))
+    case Lst(Atom("cdr")::expr::Nil) => Cdr(expression(expr))
+    case Lst(Atom("cons")::left::right::Nil) => Cons(expression(left), expression(right))
     case _ => throw new FailParseException("invalid program")
   }
   
