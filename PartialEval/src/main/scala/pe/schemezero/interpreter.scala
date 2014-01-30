@@ -9,10 +9,6 @@ object SchemeZeroInterpreter {
   case class ListValue(val list:List[Value]) extends Value
   
   
-  def evalRelation(relation: Relation)(implicit mapping: Map[String,Value], program: Program): Option[Boolean] = relation match {
-    case _ => None // TODO
-  }
-  
   def evalExpr(expr: Expression)(implicit mapping: Map[String,Value], program: Program): Option[Value] = expr match {
     case Var(name) => mapping.get(name)
     case Car(expr) => for(ListValue(x::xs) <- evalExpr(expr)) yield x
@@ -33,6 +29,16 @@ object SchemeZeroInterpreter {
         result <- evalEquation(equation, argValues.flatten, program)
       } yield result
     }
+  }
+  
+  def evalRelation(relation: Relation)(implicit mapping: Map[String,Value], program: Program): Option[Boolean] = relation match {
+    case Equals(left, right) => for {
+      left <- evalExpr(left)
+      right <- evalExpr(right)
+    } yield left == right
+    case IsEmpty(expr) => for {
+      ListValue(list) <- evalExpr(expr)
+    } yield list.isEmpty
   }
   
   def findEquation(name: String, program: Program): Option[Equation] = 

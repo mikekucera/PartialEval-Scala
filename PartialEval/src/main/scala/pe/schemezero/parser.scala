@@ -15,7 +15,11 @@ import scala.annotation.tailrec
  */
 object SchemeZeroParser {
   
-  val parse = (tokenize _) andThen parseSExpr andThen parseProgram
+  
+  private val wrap =  "(" + (_:String) + ")"
+  
+  val parse = wrap andThen tokenize andThen parseSExpr andThen parseProgram
+ 
   
   /**
    * S-expression trees.
@@ -71,12 +75,12 @@ object SchemeZeroParser {
   
   def equation(sexpr: SExpr): Equation = sexpr match {
     case Lst(Atom("define")::args::body::Nil) => Equation(name(args), parameters(args), expression(body))
-    case _ => throw new FailParseException("invalid program")
+    case x => throw new FailParseException("expecting equation, got " + x)
   }
   
   def name(sexpr: SExpr): String = sexpr match {
     case Lst(Atom(name)::parameters) => name
-    case _ => throw new FailParseException("invalid program")
+    case _ => throw new FailParseException("expecting equation name")
   }
   
   def parameters(sexpr: SExpr): List[String] = sexpr match {
@@ -84,7 +88,7 @@ object SchemeZeroParser {
       case Atom(param) => param
       case Lst(_) => throw new FailParseException("parameter expected")
     }
-    case _ => throw new FailParseException("invalid program")
+    case _ => throw new FailParseException("expecting parameters")
   }
   
   def expression(sexpr: SExpr): Expression = sexpr match {
@@ -94,13 +98,13 @@ object SchemeZeroParser {
     case Lst(Atom("car")::expr::Nil) => Car(expression(expr))
     case Lst(Atom("cdr")::expr::Nil) => Cdr(expression(expr))
     case Lst(Atom("cons")::left::right::Nil) => Cons(expression(left), expression(right))
-    case _ => throw new FailParseException("invalid program")
+    case _ => throw new FailParseException("expecting expression")
   }
   
   def relation(sexpr: SExpr): Relation = sexpr match {
     case Lst(Atom("equals")::left::right::Nil) => Equals(expression(left), expression(right))
     case Lst(Atom("isEmpty")::expr::Nil) => IsEmpty(expression(expr))
-    case _ => throw new FailParseException("invalid program")
+    case _ => throw new FailParseException("expecting relation")
   }
   
 }

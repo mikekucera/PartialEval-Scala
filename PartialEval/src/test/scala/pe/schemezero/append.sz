@@ -1,0 +1,4 @@
+(define (app xs ys)
+    (if (isEmpty xs)
+        ys
+        (cons (car xs) (call app (cdr xs) ys))))

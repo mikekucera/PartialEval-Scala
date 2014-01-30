@@ -33,4 +33,10 @@ class SchemeZeroParserSuite extends FunSuite with MustMatchers {
       parseSExpr(tokenize(")(a)"))
     }
   }
+  
+  test("parse append from section 5.3") {
+    val path = "src/test/scala/pe/schemezero/append.sz"
+    val source = io.Source.fromFile(path).mkString
+    val program = parse(source)
+  }
 }
